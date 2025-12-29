@@ -1,72 +1,53 @@
 # StockNewsSentiment 📈
 
-A Python tool that analyzes news sentiment for stocks using NLP and real-time news data.
+A Python-based NLP tool that analyzes **recent financial news sentiment for stocks** using Yahoo Finance data and a domain-specific language model (FinBERT).
+
+The system fetches live news articles, applies financial sentiment analysis, and aggregates results into a clear, interpretable sentiment signal.
+
+---
 
 ## Features
-- 📰 Fetches financial news from NewsAPI
-- 🤖 Analyzes sentiment using FinBERT (financial NLP model)
-- 📊 Returns sentiment scores and article details
-- ⏳ Customizable date ranges
+
+- 📰 Fetches real-time financial news from **Yahoo Finance** (no API key required)
+- 🤖 Uses **FinBERT**, a finance-tuned NLP model, for sentiment classification
+- 📊 Aggregates article-level sentiment into a single stock sentiment score
+- ⏳ Filters articles by a customizable lookback window (days)
+- 🧠 Clean, minimal CLI output focused on signal, not noise
+
+---
 
 ## Installation
 
-### Clone the repository:
+### Clone the repository
 ```bash
-git clone https://github.com/yourusername/StockNewsSentiment.git
+git clone https://github.com/shervin31/StockNewsSentiment.git
 cd StockNewsSentiment
 ```
 
-## Install Dependencies
+### Install dependencies
 ```bash
-pip install transformers requests pandas datetime 
+pip install yfinance transformers pandas torch
 ```
-
-## Get a NewsAPI key:
-Go to newsapi.org and sign up for a free account
-Get your API key from the dashboard
-Open functions.py and replace the API_KEY:
-```bash
-API_KEY = "your_actual_api_key_here"  # Replace this string
-```
-## Usage
+### Usage
 Run the main script:
 ```bash
 python main.py
 ```
 
-## Example interaction: 
+### Example interaction
 ```bash
-Enter a stock/company to search news for: Apple
-Enter number of days to look back: 7
-Average sentiment score: 0.68
+Enter a stock ticker (e.g., AAPL, TSLA): TSLA
+Enter number of days to look back: 5
+
+===== Sentiment Summary =====
+Ticker: TSLA
+Articles analyzed: 10
+Negative : 6
+Neutral  : 3
+Positive : 1
+
+Average sentiment score: -0.68
 ```
 
-## Output
-  DataFrame with columns: Title, Link, Published, Label, Sentiment
-  Average sentiment score (-1 to 1 scale)
 
-## Dependencies
-  transformers - For FinBERT NLP model pipeline
-  requests - For API calls to NewsAPI
-  pandas - For data manipulation
 
-## Project Structure
-```bash
-StockNewsSentiment/
-├── functions.py
-├── main.py
-└── README.md
-```
-
-## How It Works
-  Fetches news from NewsAPI
-  Processes text with FinBERT model
-  Calculates aggregate sentiment scores
-
-## Requirements
-  Python 3.7+
-  NewsAPI key
-  Internet connection
-
-## Disclaimer
-  For informational purposes only. Not financial advice.
