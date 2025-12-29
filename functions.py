@@ -1,61 +1,70 @@
 from transformers import pipeline
-import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
+import yfinance as yf
 
-def fetch_news_articles(keyword, days_back):
-    API_KEY = "59b56e303c1246efb26e118156b60af0"
+def _parse_pubdate(pubdate_str: str):
+    try:
+        return datetime.strptime(pubdate_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+def fetch_news_articles(ticker, days_back):
     pipe = pipeline("text-classification", model="ProsusAI/finbert")
-    
-    date_from = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
-    url = (
-        'https://newsapi.org/v2/everything?'
-        f'q={keyword}&'
-        f'from={date_from}&'
-        'sortBy=popularity&'
-        f'apiKey={API_KEY}'
-    )
 
-    response = requests.get(url)
+    stock = yf.Ticker(ticker)
+    raw = stock.news or []
 
-    return response, pipe
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+
+    filtered = []
+    for item in raw:
+        content = item.get("content", {}) or {}
+
+        pubdate_str = content.get("pubDate")
+        published_dt = _parse_pubdate(pubdate_str) if pubdate_str else None
+        if not published_dt:
+            continue
+        if published_dt < cutoff:
+            continue
+
+        filtered.append({
+            "Title": content.get("title"),
+            "Summary": content.get("summary"),
+            "Link": (content.get("canonicalUrl") or {}).get("url") or (content.get("clickThroughUrl") or {}).get("url") or content.get("previewUrl"),
+            "Published": published_dt.isoformat()
+        })
+
+    return filtered, pipe
 
 
-def summarize_articles(response, pipe, keyword):
-
-    articles = response.json()['articles']
-    articles = [
-        article for article in articles
-        if keyword.lower() in (article.get('title') or '').lower() 
-        or keyword.lower() in (article.get('description') or '').lower()
-    ]
-    
-    total_score = 0
-    num_articles = 0
+def summarize_articles(articles, pipe):
     data_list = []
- 
-    for i, article in enumerate(articles):
+    total_score = 0.0
+    num_articles = 0
 
-        sentiment = pipe(article['content'])[0]
-        article_dict = {
-            "Title": article.get('title'),
-            "Link": article.get('url'),
-            "Published": article.get('publishedAt'),
-            "Label": sentiment['label'],
-            "Sentiment": sentiment['score']
-        }
+    for a in articles:
+        text = (a.get("Summary") or a.get("Title") or "").strip()
+        if not text:
+            continue
 
-        data_list.append(article_dict)
+        sentiment = pipe(text)[0]
 
-        if sentiment['label'] == 'positive': 
-            total_score += sentiment['score']
+        data_list.append({
+            "Title": a.get("Title"),
+            "Link": a.get("Link"),
+            "Published": a.get("Published"),
+            "Label": sentiment["label"],
+            "Sentiment": sentiment["score"],
+        })
+
+        if sentiment["label"].lower() == "positive":
+            total_score += sentiment["score"]
             num_articles += 1
-        elif sentiment['label'] == 'negative':
-            total_score -= sentiment['score']
+        elif sentiment["label"].lower() == "negative":
+            total_score -= sentiment["score"]
             num_articles += 1
 
-    results_df = pd.DataFrame(data_list)
-
-    average_score = total_score / num_articles if num_articles > 0 else 0
-
-    return results_df, average_score
+    df = pd.DataFrame(data_list)
+    avg_score = total_score / num_articles if num_articles > 0 else 0
+    return df, avg_score
